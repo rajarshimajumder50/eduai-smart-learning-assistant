@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduAI — Smart Learning Assistant | SDG 4: Quality Education</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6fb; color: #1a1a2e; min-height: 100vh; }
+
+  header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563a8 100%);
+    color: white; padding: 20px 28px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  header .logo { font-size: 28px; }
+  header h1 { font-size: 22px; font-weight: 700; }
+  header p { font-size: 13px; opacity: 0.82; margin-top: 2px; }
+  .sdg-badge {
+    margin-left: auto; background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+
+  .tabs {
+    background: white; border-bottom: 1px solid #e0e7f0;
+    display: flex; padding: 0 24px; gap: 4px;
+  }
+  .tab {
+    padding: 14px 18px; font-size: 14px; font-weight: 500; cursor: pointer;
+    color: #6b7280; border-bottom: 2.5px solid transparent; transition: all 0.2s;
+    background: none; border-top: none; border-left: none; border-right: none;
+  }
+  .tab:hover { color: #2563a8; }
+  .tab.active { color: #2563a8; border-bottom-color: #2563a8; }
+
+  .panel { display: none; padding: 24px; max-width: 860px; margin: 0 auto; }
+  .panel.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: white; border-radius: 14px; border: 1px solid #e0e7f0;
+    padding: 20px 24px; margin-bottom: 18px;
+  }
+  .card-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #1a1a2e; }
+
+  /* Chat */
+  #chat-box {
+    background: #f8fafd; border: 1px solid #e0e7f0; border-radius: 12px;
+    padding: 16px; height: 380px; overflow-y: auto; margin-bottom: 14px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .msg { max-width: 82%; padding: 11px 15px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
+  .msg.user { background: #2563a8; color: white; align-self: flex-end; border-bottom-right-radius: 3px; }
+  .msg.bot { background: white; border: 1px solid #e0e7f0; align-self: flex-start; border-bottom-left-radius: 3px; color: #1a1a2e; }
+  .msg.bot .sender { font-size: 11px; font-weight: 700; color: #2563a8; margin-bottom: 4px; letter-spacing: 0.5px; }
+  .typing { display: flex; gap: 5px; align-items: center; padding: 12px 15px; }
+  .dot { width: 7px; height: 7px; background: #aab; border-radius: 50%; animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-7px)} }
+
+  .chat-input-row { display: flex; gap: 10px; }
+  .chat-input-row input {
+    flex: 1; padding: 11px 15px; border: 1px solid #d1d9e8; border-radius: 10px;
+    font-size: 14px; outline: none; transition: border 0.2s; background: white; color: #1a1a2e;
+  }
+  .chat-input-row input:focus { border-color: #2563a8; }
+  .btn-primary {
+    background: #2563a8; color: white; border: none; border-radius: 10px;
+    padding: 11px 20px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s;
+  }
+  .btn-primary:hover { background: #1e4f8c; }
+
+  .quick-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .quick-btn {
+    background: #eef2fb; color: #2563a8; border: 1px solid #c7d8f0; border-radius: 20px;
+    padding: 7px 14px; font-size: 13px; cursor: pointer; transition: all 0.2s;
+  }
+  .quick-btn:hover { background: #2563a8; color: white; border-color: #2563a8; }
+
+  /* Quiz */
+  .quiz-topic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .topic-card {
+    border: 2px solid #e0e7f0; border-radius: 12px; padding: 16px 12px;
+    text-align: center; cursor: pointer; transition: all 0.2s; background: white;
+  }
+  .topic-card:hover, .topic-card.selected { border-color: #2563a8; background: #eef2fb; }
+  .topic-card .icon { font-size: 28px; margin-bottom: 8px; }
+  .topic-card .label { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+
+  .quiz-area { display: none; }
+  .quiz-area.active { display: block; }
+  .quiz-q { font-size: 16px; font-weight: 600; margin-bottom: 16px; line-height: 1.5; }
+  .quiz-opts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .quiz-opt {
+    border: 1.5px solid #e0e7f0; border-radius: 10px; padding: 13px 16px;
+    cursor: pointer; font-size: 14px; transition: all 0.18s; background: white; text-align: left;
+  }
+  .quiz-opt:hover { border-color: #2563a8; background: #eef2fb; }
+  .quiz-opt.correct { border-color: #16a34a; background: #f0fdf4; color: #15803d; }
+  .quiz-opt.wrong { border-color: #dc2626; background: #fef2f2; color: #b91c1c; }
+  .quiz-feedback { padding: 12px 16px; border-radius: 10px; font-size: 14px; line-height: 1.5; margin-bottom: 14px; display: none; }
+  .quiz-feedback.correct { background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+  .quiz-feedback.wrong { background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; }
+  .score-bar-wrap { background: #e0e7f0; border-radius: 10px; height: 10px; margin: 8px 0 4px; }
+  .score-bar { height: 10px; border-radius: 10px; background: #2563a8; transition: width 0.4s; }
+
+  /* Study Planner */
+  .planner-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  @media (max-width: 540px) { .planner-form { grid-template-columns: 1fr; } }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 13px; font-weight: 600; color: #4b5563; }
+  .form-group input, .form-group select {
+    padding: 10px 13px; border: 1px solid #d1d9e8; border-radius: 9px;
+    font-size: 14px; background: white; color: #1a1a2e; outline: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: #2563a8; }
+  #plan-output { background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 18px; display: none; }
+  #plan-output h3 { font-size: 15px; font-weight: 700; color: #1e40af; margin-bottom: 12px; }
+  .plan-day { background: white; border-radius: 9px; border: 1px solid #dbeafe; padding: 12px 15px; margin-bottom: 10px; }
+  .plan-day .day-label { font-size: 12px; font-weight: 700; color: #2563a8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .plan-day ul { list-style: none; padding: 0; }
+  .plan-day ul li { font-size: 13px; color: #374151; padding: 3px 0; padding-left: 18px; position: relative; }
+  .plan-day ul li::before { content: "›"; position: absolute; left: 4px; color: #2563a8; font-weight: 700; }
+
+  /* Summarizer */
+  .summarizer-area textarea {
+    width: 100%; min-height: 140px; padding: 13px 15px; border: 1px solid #d1d9e8;
+    border-radius: 10px; font-size: 14px; resize: vertical; font-family: inherit;
+    outline: none; background: white; color: #1a1a2e;
+  }
+  .summarizer-area textarea:focus { border-color: #2563a8; }
+  #summary-output {
+    background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px;
+    padding: 16px 18px; margin-top: 14px; font-size: 14px; line-height: 1.7;
+    color: #14532d; display: none;
+  }
+  #summary-output h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+
+  /* Footer SDG */
+  .sdg-footer {
+    text-align: center; padding: 20px; font-size: 12px; color: #6b7280;
+    border-top: 1px solid #e0e7f0; background: white; margin-top: 12px;
+  }
+
+  .loading-spinner {
+    display: inline-block; width: 16px; height: 16px; border: 2px solid #c7d8f0;
+    border-top-color: #2563a8; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🎓</div>
+  <div>
+    <h1>EduAI — Smart Learning Assistant</h1>
+    <p>AI-powered personalized education tool for every learner</p>
+  </div>
+  <div class="sdg-badge">🌍 SDG 4: Quality Education</div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('chat')">AI Tutor</button>
+  <button class="tab" onclick="switchTab('quiz')">Quiz Generator</button>
+  <button class="tab" onclick="switchTab('planner')">Study Planner</button>
+  <button class="tab" onclick="switchTab('summarizer')">Text Summarizer</button>
+</div>
+
+<!-- AI TUTOR TAB -->
+<div id="tab-chat" class="panel active">
+  <div class="card">
+    <div class="card-title">Ask your AI Tutor anything</div>
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="quickAsk('Explain photosynthesis simply')">Explain photosynthesis</button>
+      <button class="quick-btn" onclick="quickAsk('What is Newton\'s second law?')">Newton's 2nd law</button>
+      <button class="quick-btn" onclick="quickAsk('How does democracy work?')">How democracy works</button>
+      <button class="quick-btn" onclick="quickAsk('What is machine learning?')">Machine learning basics</button>
+      <button class="quick-btn" onclick="quickAsk('Explain the water cycle')">Water cycle</button>
+    </div>
+    <div id="chat-box">
+      <div class="msg bot">
+        <div class="sender">EduAI TUTOR</div>
+        Hello! I'm your AI-powered tutor. Ask me any question from any subject — Science, Math, History, Technology, or anything else. I'll explain it clearly and simply. What would you like to learn today?
+      </div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Type your question here..." onkeydown="if(event.key==='Enter')sendChat()" />
+      <button class="btn-primary" onclick="sendChat()">Ask ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ TAB -->
+<div id="tab-quiz" class="panel">
+  <div class="card">
+    <div class="card-title">Choose a topic to test yourself</div>
+    <div class="quiz-topic-grid" id="topic-grid">
+      <div class="topic-card" onclick="selectTopic('Science')"><div class="icon">🔬</div><div class="label">Science</div></div>
+      <div class="topic-card" onclick="selectTopic('Mathematics')"><div class="icon">📐</div><div class="label">Mathematics</div></div>
+      <div class="topic-card" onclick="selectTopic('History')"><div class="icon">📜</div><div class="label">History</div></div>
+      <div class="topic-card" onclick="selectTopic('Technology & AI')"><div class="icon">💻</div><div class="label">Technology & AI</div></div>
+      <div class="topic-card" onclick="selectTopic('Environment & SDGs')"><div class="icon">🌱</div><div class="label">Environment & SDGs</div></div>
+      <div class="topic-card" onclick="selectTopic('General Knowledge')"><div class="icon">🌍</div><div class="label">General Knowledge</div></div>
+    </div>
+    <div id="quiz-loading" style="display:none; text-align:center; padding:20px; color:#6b7280;">
+      <span class="loading-spinner"></span>Generating quiz questions with AI...
+    </div>
+    <div class="quiz-area" id="quiz-area">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span id="quiz-topic-label" style="font-size:13px; font-weight:700; color:#2563a8;"></span>
+        <span id="quiz-counter" style="font-size:13px; color:#6b7280;"></span>
+      </div>
+      <div class="score-bar-wrap"><div class="score-bar" id="score-bar" style="width:0%"></div></div>
+      <div style="font-size:12px; color:#6b7280; margin-bottom:16px;" id="score-text">Score: 0 / 0</div>
+      <div class="quiz-q" id="quiz-q"></div>
+      <div class="quiz-opts" id="quiz-opts"></div>
+      <div class="quiz-feedback" id="quiz-feedback"></div>
+      <button class="btn-primary" id="quiz-next-btn" style="display:none;" onclick="nextQuestion()">Next Question ›</button>
+      <button class="btn-primary" id="quiz-retry-btn" style="display:none; background:#16a34a;" onclick="retryQuiz()">Try Another Topic</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDY PLANNER TAB -->
+<div id="tab-planner" class="panel">
+  <div class="card">
+    <div class="card-title">Generate a personalized study plan</div>
+    <div class="planner-form">
+      <div class="form-group">
+        <label>Subject / Topic</label>
+        <input type="text" id="plan-subject" placeholder="e.g. Class 10 Physics" />
+      </div>
+      <div class="form-group">
+        <label>Available days</label>
+        <select id="plan-days">
+          <option value="3">3 days</option>
+          <option value="5" selected>5 days</option>
+          <option value="7">7 days</option>
+          <option value="10">10 days</option>
+          <option value="14">14 days</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Daily study time</label>
+        <select id="plan-hours">
+          <option value="1">1 hour/day</option>
+          <option value="2" selected>2 hours/day</option>
+          <option value="3">3 hours/day</option>
+          <option value="4">4 hours/day</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Your current level</label>
+        <select id="plan-level">
+          <option value="beginner">Beginner</option>
+          <option value="intermediate" selected>Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="generatePlan()" id="plan-btn">Generate Study Plan ›</button>
+    <div id="plan-output" style="margin-top:18px;"></div>
+  </div>
+</div>
+
+<!-- SUMMARIZER TAB -->
+<div id="tab-summarizer" class="panel">
+  <div class="card">
+    <div class="card-title">Paste any text — get a clear summary + key points</div>
+    <div class="summarizer-area">
+      <textarea id="summarizer-input" placeholder="Paste your textbook paragraph, article, or notes here..."></textarea>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px;">
+      <button class="btn-primary" onclick="summarizeText()">Summarize ›</button>
+      <button class="btn-primary" style="background:#7c3aed;" onclick="explainText()">Explain Simply ›</button>
+    </div>
+    <div id="summary-output"></div>
+  </div>
+</div>
+
+<div class="sdg-footer">
+  EduAI — Built for SDG 4: Quality Education &nbsp;|&nbsp; Ensuring inclusive and equitable quality education for all &nbsp;|&nbsp; Powered by Claude AI (Anthropic)
+</div>
+
+<script>
+const API_URL = "/.netlify/functions/claude";
+let quizQuestions = [], quizIdx = 0, quizScore = 0, quizAnswered = false, currentTopic = "";
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['chat','quiz','planner','summarizer'][i]===name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+async function callClaude(prompt, system) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      system: system || "You are EduAI, a helpful educational AI assistant designed for students. Be clear, encouraging, and educational."
+    })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "AI request failed");
+  }
+
+  return data.reply || "";
+}
+
+// ---- CHAT ----
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = "";
+  appendMsg(q, 'user');
+  const typing = appendTyping();
+  try {
+    const reply = await callClaude(q,
+      "You are EduAI, a friendly AI tutor for students of all ages. Explain concepts clearly, use simple language, examples, and analogies. Keep answers focused and educational. Support SDG 4: Quality Education.");
+    typing.remove();
+    appendMsg(reply, 'bot');
+  } catch(e) {
+    typing.remove();
+    appendMsg("Sorry, I couldn't connect. Please check your internet and try again.", 'bot');
+  }
+}
+
+function quickAsk(q) {
+  document.getElementById('chat-input').value = q;
+  sendChat();
+  switchTab('chat');
+}
+
+function appendMsg(text, role) {
+  const box = document.getElementById('chat-box');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  if (role === 'bot') div.innerHTML = '<div class="sender">EDUAI TUTOR</div>' + text.replace(/\n/g,'<br>');
+  else div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+function appendTyping() {
+  const box = document.getElementById('chat-box');
+  const div = document.createElement('div');
+  div.className = 'msg bot typing';
+  div.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+// ---- QUIZ ----
+async function selectTopic(topic) {
+  currentTopic = topic;
+  document.querySelectorAll('.topic-card').forEach(c => c.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  document.getElementById('quiz-loading').style.display = 'block';
+  document.getElementById('quiz-area').classList.remove('active');
+  quizQuestions = []; quizIdx = 0; quizScore = 0;
+
+  try {
+    const raw = await callClaude(
+      `Generate 5 multiple-choice quiz questions about "${topic}" for a high school student. 
+Return ONLY valid JSON array. Format:
+[{"q":"question text","options":["A","B","C","D"],"answer":0,"explanation":"why this is correct"}]
+Answer index is 0-based. No extra text, no markdown.`,
+      "You are a quiz generator. Return only valid JSON arrays. No markdown, no explanation outside JSON."
+    );
+    const clean = raw.replace(/```json|```/g,'').trim();
+    quizQuestions = JSON.parse(clean);
+    document.getElementById('quiz-loading').style.display = 'none';
+    document.getElementById('quiz-area').classList.add('active');
+    document.getElementById('quiz-topic-label').textContent = topic.toUpperCase();
+    showQuestion();
+  } catch(e) {
+    document.getElementById('quiz-loading').style.display = 'none';
+    document.getElementById('quiz-area').classList.add('active');
+    document.getElementById('quiz-area').innerHTML = '<p style="color:#dc2626;padding:16px;">Failed to generate quiz. Please try again.</p><button class="btn-primary" onclick="retryQuiz()">Try Again</button>';
+  }
+}
+
+function showQuestion() {
+  if (quizIdx >= quizQuestions.length) { showResult(); return; }
+  const q = quizQuestions[quizIdx];
+  quizAnswered = false;
+  document.getElementById('quiz-counter').textContent = `Question ${quizIdx+1} of ${quizQuestions.length}`;
+  document.getElementById('quiz-q').textContent = q.q;
+  const opts = document.getElementById('quiz-opts');
+  opts.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt';
+    btn.textContent = opt;
+    btn.onclick = () => answerQuiz(i, btn);
+    opts.appendChild(btn);
+  });
+  document.getElementById('quiz-feedback').style.display = 'none';
+  document.getElementById('quiz-next-btn').style.display = 'none';
+  document.getElementById('quiz-retry-btn').style.display = 'none';
+  updateScoreBar();
+}
+
+function answerQuiz(chosen, btn) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const q = quizQuestions[quizIdx];
+  const opts = document.querySelectorAll('.quiz-opt');
+  opts.forEach((b,i) => { b.disabled = true; if(i===q.answer) b.classList.add('correct'); });
+  const fb = document.getElementById('quiz-feedback');
+  if (chosen === q.answer) {
+    quizScore++;
+    btn.classList.add('correct');
+    fb.className = 'quiz-feedback correct';
+    fb.textContent = '✓ Correct! ' + q.explanation;
+  } else {
+    btn.classList.add('wrong');
+    fb.className = 'quiz-feedback wrong';
+    fb.textContent = '✗ Incorrect. ' + q.explanation;
+  }
+  fb.style.display = 'block';
+  updateScoreBar();
+  document.getElementById('quiz-next-btn').style.display = quizIdx < quizQuestions.length-1 ? 'block' : 'none';
+  if (quizIdx === quizQuestions.length-1) document.getElementById('quiz-retry-btn').style.display = 'block';
+}
+
+function nextQuestion() { quizIdx++; showQuestion(); }
+function retryQuiz() {
+  document.querySelectorAll('.topic-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('quiz-area').classList.remove('active');
+  quizQuestions = []; quizIdx = 0; quizScore = 0;
+}
+
+function updateScoreBar() {
+  const total = quizQuestions.length;
+  const pct = total ? Math.round((quizScore/total)*100) : 0;
+  document.getElementById('score-bar').style.width = pct+'%';
+  document.getElementById('score-text').textContent = `Score: ${quizScore} / ${Math.min(quizIdx+(quizAnswered?1:0),total)}`;
+}
+
+function showResult() {
+  const pct = Math.round((quizScore/quizQuestions.length)*100);
+  const msg = pct===100?"Perfect score! Outstanding!" : pct>=80?"Great job! Keep it up!" : pct>=60?"Good effort! Review the missed questions." : "Keep practicing — you'll improve!";
+  document.getElementById('quiz-area').innerHTML = `
+    <div style="text-align:center;padding:28px 16px;">
+      <div style="font-size:52px;margin-bottom:12px;">${pct>=80?'🏆':pct>=60?'👍':'📚'}</div>
+      <div style="font-size:26px;font-weight:700;color:#1a1a2e;margin-bottom:6px;">${quizScore} / ${quizQuestions.length}</div>
+      <div style="font-size:14px;color:#6b7280;margin-bottom:20px;">${msg}</div>
+      <button class="btn-primary" onclick="retryQuiz()" style="margin:0 auto;">Try Another Topic ›</button>
+    </div>`;
+}
+
+// ---- STUDY PLANNER ----
+async function generatePlan() {
+  const subject = document.getElementById('plan-subject').value.trim();
+  if (!subject) { alert('Please enter a subject or topic.'); return; }
+  const days = document.getElementById('plan-days').value;
+  const hours = document.getElementById('plan-hours').value;
+  const level = document.getElementById('plan-level').value;
+  const btn = document.getElementById('plan-btn');
+  btn.disabled = true; btn.textContent = 'Generating...';
+  const out = document.getElementById('plan-output');
+  out.style.display = 'none';
+
+  try {
+    const raw = await callClaude(
+      `Create a ${days}-day study plan for "${subject}". Student level: ${level}. Daily available time: ${hours} hour(s).
+Return ONLY valid JSON:
+{"title":"Plan title","days":[{"day":"Day 1","tasks":["task1","task2","task3"]}]}
+Make it realistic, progressive, and educational. No markdown.`,
+      "You are an educational planner. Return only valid JSON. No extra text."
+    );
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const plan = JSON.parse(clean);
+    let html = `<h3>📅 ${plan.title}</h3>`;
+    plan.days.forEach(d => {
+      html += `<div class="plan-day"><div class="day-label">${d.day}</div><ul>${d.tasks.map(t=>`<li>${t}</li>`).join('')}</ul></div>`;
+    });
+    out.innerHTML = html;
+    out.style.display = 'block';
+  } catch(e) {
+    out.innerHTML = '<p style="color:#dc2626;">Failed to generate plan. Please try again.</p>';
+    out.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Generate Study Plan ›';
+}
+
+// ---- SUMMARIZER ----
+async function summarizeText() {
+  const text = document.getElementById('summarizer-input').value.trim();
+  if (!text) { alert('Please paste some text first.'); return; }
+  const out = document.getElementById('summary-output');
+  out.innerHTML = '<span class="loading-spinner"></span>Summarizing...';
+  out.style.display = 'block';
+  try {
+    const reply = await callClaude(
+      `Summarize the following text for a student. Give:
+1. A 2-3 sentence summary
+2. 4-5 key points as bullet points
+3. One important takeaway
+
+Text: ${text}`,
+      "You are an educational summarizer. Be clear, concise, and helpful for students."
+    );
+    out.innerHTML = '<h3>Summary & Key Points</h3>' + reply.replace(/\n/g,'<br>');
+  } catch(e) {
+    out.innerHTML = '<p style="color:#dc2626;">Failed to summarize. Please try again.</p>';
+  }
+}
+
+async function explainText() {
+  const text = document.getElementById('summarizer-input').value.trim();
+  if (!text) { alert('Please paste some text first.'); return; }
+  const out = document.getElementById('summary-output');
+  out.innerHTML = '<span class="loading-spinner"></span>Simplifying...';
+  out.style.display = 'block';
+  try {
+    const reply = await callClaude(
+      `Explain the following text as if the reader is a 12-year-old student. Use simple words, a real-world example, and make it fun and easy to understand.
+
+Text: ${text}`,
+      "You are a friendly teacher who makes complex things simple for young students."
+    );
+    out.innerHTML = '<h3>Simple Explanation</h3>' + reply.replace(/\n/g,'<br>');
+  } catch(e) {
+    out.innerHTML = '<p style="color:#dc2626;">Failed to explain. Please try again.</p>';
+  }
+}
+</script>
+</body>
+</html>
