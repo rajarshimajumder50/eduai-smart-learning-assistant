@@ -1,22 +1,27 @@
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+export default async (request) => {
+  if (request.method === "OPTIONS") {
+    return new Response("", {
+      status: 200,
+      headers: corsHeaders()
+    });
+  }
 
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405);
+  }
 
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: "Gemini API key missing. Add GEMINI_API_KEY in Netlify." });
+    return jsonResponse({ error: "Gemini API key missing." }, 500);
   }
 
   try {
-    const { prompt, system } = req.body || {};
+    const body = await request.json();
+    const { prompt, system } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
-      return res.status(400).json({ error: "Prompt is required." });
+      return jsonResponse({ error: "Prompt is required." }, 400);
     }
 
     const finalPrompt = `${system || "You are EduAI, a helpful educational AI assistant."}\n\nUser request:\n${prompt}`;
@@ -27,11 +32,7 @@ export default async function handler(req, res) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: finalPrompt }]
-            }
-          ]
+          contents: [{ parts: [{ text: finalPrompt }] }]
         })
       }
     );
@@ -39,17 +40,33 @@ export default async function handler(req, res) {
     const data = await geminiResponse.json();
 
     if (!geminiResponse.ok) {
-      return res.status(geminiResponse.status).json({
+      return jsonResponse({
         error: data?.error?.message || "Gemini API request failed."
-      });
+      }, geminiResponse.status);
     }
 
     const reply =
       data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") ||
       "No response generated.";
 
-    return res.status(200).json({ reply });
+    return jsonResponse({ reply }, 200);
   } catch (error) {
-    return res.status(500).json({ error: error.message || "Server error." });
+    return jsonResponse({ error: error.message || "Server error." }, 500);
   }
+};
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Content-Type": "application/json"
+  };
+}
+
+function jsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: corsHeaders()
+  });
 }
