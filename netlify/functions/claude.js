@@ -1,19 +1,16 @@
 export default async (request) => {
   if (request.method === "OPTIONS") {
-    return new Response("", {
-      status: 200,
-      headers: corsHeaders()
-    });
+    return new Response("", { status: 200, headers: corsHeaders() });
   }
 
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    return jsonResponse({ error: "Gemini API key missing." }, 500);
+    return jsonResponse({ error: "Groq API key missing." }, 500);
   }
 
   try {
@@ -24,30 +21,38 @@ export default async (request) => {
       return jsonResponse({ error: "Prompt is required." }, 400);
     }
 
-    const finalPrompt = `${system || "You are EduAI, a helpful educational AI assistant."}\n\nUser request:\n${prompt}`;
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content: system || "You are EduAI, a helpful educational AI assistant designed for students. Give clear, simple, student-friendly answers."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      })
+    });
 
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: finalPrompt }] }]
-        })
-      }
-    );
+    const data = await groqResponse.json();
 
-    const data = await geminiResponse.json();
-
-    if (!geminiResponse.ok) {
+    if (!groqResponse.ok) {
       return jsonResponse({
-        error: data?.error?.message || "Gemini API request failed."
-      }, geminiResponse.status);
+        error: data?.error?.message || "Groq API request failed."
+      }, groqResponse.status);
     }
 
-    const reply =
-      data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") ||
-      "No response generated.";
+    const reply = data?.choices?.[0]?.message?.content || "No response generated.";
 
     return jsonResponse({ reply }, 200);
   } catch (error) {
